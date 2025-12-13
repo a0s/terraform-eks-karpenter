@@ -105,3 +105,15 @@ variable "addon_pod_identity_agent_version" {
   type        = string
   default     = "v1.3.10-eksbuild.1"
 }
+
+variable "user_access_entries" {
+  description = "List of ARNs (user or role ARNs) to grant cluster access with full admin policy"
+  type        = list(string)
+  default     = []
+}
+
+variable "user_access_allowed_namespaces" {
+  description = "List of namespaces to grant cluster access with full admin policy"
+  type        = list(string)
+  default     = ["default"]
+}

@@ -3,6 +3,7 @@ provider "aws" {
   default_tags {
     tags = {
       Environment = var.env
+      Stack       = "bootstrap"
       ManagedBy   = "terraform"
     }
   }

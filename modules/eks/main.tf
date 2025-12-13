@@ -22,11 +22,11 @@ module "eks" {
   eks_managed_node_groups = {
     karpenter = {
       ami_type       = "BOTTLEROCKET_x86_64"
-      instance_types = ["t3.small"]
+      instance_types = [var.karpenter_node_group_instance_type]
 
-      min_size     = 1
-      max_size     = 3
-      desired_size = 1
+      min_size     = var.karpenter_node_group_min_size
+      max_size     = var.karpenter_node_group_max_size
+      desired_size = var.karpenter_node_group_desired_size
 
       labels = {
         "karpenter.sh/controller" = "true"
@@ -56,18 +56,7 @@ resource "aws_security_group_rule" "node_to_node" {
   security_group_id        = aws_security_group.node_external.id
 }
 
-# Egress rule for HTTP (needed for apt update)
-resource "aws_security_group_rule" "egress_http" {
-  type              = "egress"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.node_external.id
-  description       = "Egress all HTTP"
-}
-
-# Ingress rule for port 9443 (required for EKS)
+# Required for (AWS Load Balancer Controller, TargetGroupBinding, webhook)
 # https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1828
 resource "aws_security_group_rule" "ingress_rule" {
   type              = "ingress"
@@ -83,10 +72,6 @@ module "karpenter" {
   version = "= 21.10.1"
 
   cluster_name = module.eks.cluster_name
-
-  # create_node_iam_role = false
-  # node_iam_role_arn    = module.eks.eks_managed_node_groups["karpenter"].iam_role_arn
-  # OR
 
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
@@ -119,7 +104,7 @@ resource "helm_release" "karpenter" {
   repository_password = data.aws_ecrpublic_authorization_token.token.password
   chart               = "karpenter"
   version             = "1.8.3"
-  wait                = false
+  wait                = true
 
   values = [
     <<-EOT

@@ -34,6 +34,30 @@ variable "log_retention_days" {
   default     = 7
 }
 
+variable "karpenter_node_group_instance_type" {
+  description = "Instance type for the Karpenter node group"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "karpenter_node_group_min_size" {
+  description = "Minimum number of nodes in the Karpenter node group"
+  type        = number
+  default     = 1
+}
+
+variable "karpenter_node_group_desired_size" {
+  description = "Desired number of nodes in the Karpenter node group"
+  type        = number
+  default     = 2
+}
+
+variable "karpenter_node_group_max_size" {
+  description = "Maximum number of nodes in the Karpenter node group"
+  type        = number
+  default     = 3
+}
+
 variable "addon_kube_proxy_enabled" {
   description = "Enable kube-proxy addon"
   type        = bool

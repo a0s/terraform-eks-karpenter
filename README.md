@@ -1,5 +1,7 @@
 # Automate AWS EKS cluster setup with Karpenter, while utilizing Graviton and Spot instances
 
+<img src="images/logo.png" width="500" style="display: block; margin: 0 auto;" />
+
 Example Terraform project for deploying an AWS EKS cluster with Karpenter autoscaling, supporting both x86 and ARM64 (Graviton) instances.
 
 ## Features
@@ -9,6 +11,43 @@ Example Terraform project for deploying an AWS EKS cluster with Karpenter autosc
 - **Cost Optimization**: Leverages Graviton and Spot instances for better price/performance
 - **Multi-Architecture Support**: Run workloads on either x86 or ARM64 nodes based on pod requirements
 - **Multiple Environments**: Supports creation of multiple environments (dev, prod, etc.)
+
+## Architecture
+
+The following diagram illustrates the structure of the Terraform codebase:
+
+```mermaid
+flowchart LR
+    subgraph dev["Environment: dev"]
+        direction TB
+        bootstrap["01_bootstrap"]
+        vpc_stack["02_vpc"]
+        eks_stack["03_eks"]
+
+        bootstrap --> vpc_stack
+        vpc_stack --> eks_stack
+    end
+
+    subgraph modules["Modules"]
+        direction TB
+        private_bucket_mod["private_bucket"]
+        vpc_mod["vpc"]
+        eks_mod["eks"]
+    end
+
+    private_bucket_mod -.-> bootstrap
+    vpc_mod -.-> vpc_stack
+    eks_mod -.-> eks_stack
+
+    style dev fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style modules fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style bootstrap fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style vpc_stack fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style eks_stack fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style private_bucket_mod fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    style vpc_mod fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    style eks_mod fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+```
 
 ## Usage
 

@@ -29,7 +29,7 @@ module "eks" {
 
   eks_managed_node_groups = {
     karpenter = {
-      ami_type       = "BOTTLEROCKET_x86_64"
+      ami_type       = var.karpenter_node_group_ami_type
       instance_types = [var.karpenter_node_group_instance_type]
 
       min_size     = var.karpenter_node_group_min_size
@@ -47,6 +47,13 @@ module "eks" {
         }
       }
       vpc_security_group_ids = [aws_security_group.node_external.id]
+
+      # https://github.com/aws/karpenter-provider-aws/issues/8155#issuecomment-3141206690
+      metadata_options = {
+        http_endpoint               = "enabled"
+        http_tokens                 = "optional"
+        http_put_response_hop_limit = 2
+      }
     }
   }
 }

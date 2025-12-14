@@ -40,6 +40,12 @@ variable "karpenter_node_group_instance_type" {
   default     = "t3.small"
 }
 
+variable "karpenter_node_group_ami_type" {
+  description = "AMI type for the Karpenter node group"
+  type        = string
+  default     = "BOTTLEROCKET_x86_64"
+}
+
 variable "karpenter_node_group_min_size" {
   description = "Minimum number of nodes in the Karpenter node group"
   type        = number

@@ -1,6 +1,8 @@
 # Automate AWS EKS cluster setup with Karpenter, while utilizing Graviton and Spot instances
 
-<img src="images/logo.png" width="500" style="display: block; margin: 0 auto;" />
+<div align="center">
+  <img src="images/logo.png" width="500" />
+</div>
 
 Example Terraform project for deploying an AWS EKS cluster with Karpenter autoscaling, supporting both x86 and ARM64 (Graviton) instances.
 

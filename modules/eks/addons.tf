@@ -1,15 +1,42 @@
 locals {
   addon_defaults = {
-    "kube-proxy" = {
+    "kube-proxy" = { # has op=Exists
       enabled              = var.addon_kube_proxy_enabled
       version              = var.addon_kube_proxy_version
       resolve_conflicts    = "OVERWRITE"
-      before_compute       = false
+      before_compute       = true
       configuration_values = null
     }
-    "coredns" = {
+    "coredns" = { # has tolerations
       enabled           = var.addon_coredns_enabled
       version           = var.addon_coredns_version
+      resolve_conflicts = "OVERWRITE"
+      before_compute    = true
+      configuration_values = jsonencode({
+        tolerations = [
+          {
+            key      = "karpenter.sh/controller"
+            operator = "Equal"
+            value    = "true"
+            effect   = "NoSchedule"
+          }
+        ]
+      })
+    }
+    "vpc-cni" = { # has op=Exists
+      enabled           = var.addon_vpc_cni_enabled
+      version           = var.addon_vpc_cni_version
+      resolve_conflicts = "OVERWRITE"
+      before_compute    = true
+      configuration_values = jsonencode({
+        env = {
+          ENABLE_PREFIX_DELEGATION = "true"
+        }
+      })
+    }
+    "eks-pod-identity-agent" = { # has tolerations
+      enabled           = var.addon_pod_identity_agent_enabled
+      version           = var.addon_pod_identity_agent_version
       resolve_conflicts = "OVERWRITE"
       before_compute    = false
       configuration_values = jsonencode({
@@ -23,25 +50,7 @@ locals {
         ]
       })
     }
-    "vpc-cni" = {
-      enabled           = var.addon_vpc_cni_enabled
-      version           = var.addon_vpc_cni_version
-      resolve_conflicts = "OVERWRITE"
-      before_compute    = true
-      configuration_values = jsonencode({
-        env = {
-          ENABLE_PREFIX_DELEGATION = "true"
-        }
-      })
-    }
-    "eks-pod-identity-agent" = {
-      enabled              = var.addon_pod_identity_agent_enabled
-      version              = var.addon_pod_identity_agent_version
-      resolve_conflicts    = "OVERWRITE"
-      before_compute       = true
-      configuration_values = null
-    }
-    "metrics-server" = {
+    "metrics-server" = { # has tolerations
       enabled           = var.metrics_server_enabled
       version           = var.metrics_server_version
       resolve_conflicts = "OVERWRITE"

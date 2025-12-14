@@ -106,6 +106,18 @@ variable "addon_pod_identity_agent_version" {
   default     = "v1.3.10-eksbuild.1"
 }
 
+variable "metrics_server_enabled" {
+  description = "Enable Metrics Server addon"
+  type        = bool
+  default     = true
+}
+
+variable "metrics_server_version" {
+  description = "Version of the Metrics Server addon"
+  type        = string
+  default     = "v0.8.0-eksbuild.5"
+}
+
 variable "user_access_entries" {
   description = "List of ARNs (user or role ARNs) to grant cluster access with full admin policy"
   type        = list(string)

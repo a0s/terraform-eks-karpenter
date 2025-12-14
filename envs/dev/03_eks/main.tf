@@ -16,7 +16,7 @@ module "eks" {
   cluster_name   = data.terraform_remote_state.vpc.outputs.cluster_name
   eks_version    = "1.34"
 
-  karpenter_node_group_desired_size = 1
+  # karpenter_node_group_desired_size = 1
 }
 
 data "aws_caller_identity" "current" {}

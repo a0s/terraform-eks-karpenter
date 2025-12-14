@@ -78,10 +78,6 @@ module "karpenter" {
   }
 }
 
-data "aws_ecrpublic_authorization_token" "token" {
-  region = var.aws_region
-}
-
 data "aws_eks_cluster_auth" "eks_cluster_auth" {
   name = module.eks.cluster_name
 }
@@ -96,15 +92,13 @@ provider "helm" {
 }
 
 resource "helm_release" "karpenter" {
-  provider            = helm.eks-module
-  namespace           = "kube-system"
-  name                = "karpenter"
-  repository          = "oci://public.ecr.aws/karpenter"
-  repository_username = data.aws_ecrpublic_authorization_token.token.user_name
-  repository_password = data.aws_ecrpublic_authorization_token.token.password
-  chart               = "karpenter"
-  version             = "1.8.3"
-  wait                = true
+  provider   = helm.eks-module
+  namespace  = "kube-system"
+  name       = "karpenter"
+  chart      = "karpenter"
+  repository = "oci://public.ecr.aws/karpenter"
+  version    = "1.8.3"
+  wait       = true
 
   values = [
     <<-EOT
@@ -121,3 +115,168 @@ resource "helm_release" "karpenter" {
   ]
 }
 
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  token                  = data.aws_eks_cluster_auth.eks_cluster_auth.token
+}
+
+resource "kubernetes_manifest" "karpenter_nodepool_spot_arm64" {
+  depends_on = [helm_release.karpenter]
+  manifest = {
+    apiVersion = "karpenter.sh/v1"
+    kind       = "NodePool"
+    metadata = {
+      name = "spot-arm64"
+    }
+    spec = {
+      template = {
+        spec = {
+          nodeClassRef = {
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = "default"
+          }
+          requirements = [
+            {
+              key      = "karpenter.sh/capacity-type"
+              operator = "In"
+              values   = ["spot"]
+            },
+            {
+              key      = "kubernetes.io/arch"
+              operator = "In"
+              values   = ["arm64"]
+            },
+            {
+              key      = "kubernetes.io/os"
+              operator = "In"
+              values   = ["linux"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-family"
+              operator = "In"
+              values = [
+                "c6g",
+                "m6g",
+              ]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-cpu"
+              operator = "In"
+              values   = ["1", "2", "4"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-hypervisor"
+              operator = "In"
+              values   = ["nitro"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-generation"
+              operator = "Gt"
+              values   = ["2"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_manifest" "karpenter_nodepool_spot_amd64" {
+  depends_on = [helm_release.karpenter]
+  manifest = {
+    apiVersion = "karpenter.sh/v1"
+    kind       = "NodePool"
+    metadata = {
+      name = "spot-amd64"
+    }
+    spec = {
+      template = {
+        spec = {
+          nodeClassRef = {
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = "default"
+          }
+          requirements = [
+            {
+              key      = "karpenter.sh/capacity-type"
+              operator = "In"
+              values   = ["spot"]
+            },
+            {
+              key      = "kubernetes.io/arch"
+              operator = "In"
+              values   = ["amd64"]
+            },
+            {
+              key      = "kubernetes.io/os"
+              operator = "In"
+              values   = ["linux"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-family"
+              operator = "In"
+              values = [
+                "c6a",
+                "m6a",
+              ]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-cpu"
+              operator = "In"
+              values   = ["1", "2", "4"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-hypervisor"
+              operator = "In"
+              values   = ["nitro"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-generation"
+              operator = "Gt"
+              values   = ["2"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_manifest" "karpenter_ec2nodeclass_default" {
+  depends_on = [helm_release.karpenter]
+  manifest = {
+    apiVersion = "karpenter.k8s.aws/v1"
+    kind       = "EC2NodeClass"
+    metadata = {
+      name = "default"
+    }
+    spec = {
+      amiSelectorTerms = [
+        {
+          alias = "bottlerocket@latest"
+        }
+      ]
+      role = module.karpenter.node_iam_role_name
+      subnetSelectorTerms = [
+        {
+          tags = {
+            "karpenter.sh/discovery" = var.cluster_name
+          }
+        }
+      ]
+      securityGroupSelectorTerms = [
+        {
+          tags = {
+            "karpenter.sh/discovery" = var.cluster_name
+          }
+        }
+      ]
+      tags = {
+        "karpenter.sh/discovery" = var.cluster_name
+      }
+    }
+  }
+}

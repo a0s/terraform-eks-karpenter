@@ -14,5 +14,9 @@ terraform {
       source  = "hashicorp/local"
       version = "= 2.6.1"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "= 3.0.1"
+    }
   }
 }

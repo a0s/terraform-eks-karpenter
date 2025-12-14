@@ -32,6 +32,13 @@ locals {
       before_compute       = true
       configuration_values = null
     }
+    "metrics-server" = {
+      enabled              = var.metrics_server_enabled
+      version              = var.metrics_server_version
+      resolve_conflicts    = "OVERWRITE"
+      before_compute       = false
+      configuration_values = null
+    }
   }
 
   cluster_addons = {

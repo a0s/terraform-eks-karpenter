@@ -14,6 +14,14 @@ module "eks" {
   vpc_id     = var.vpc_id
   subnet_ids = var.subnet_ids
 
+  security_group_tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
+
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
+
   # Disable EKS Auto Mode due to manual Karpenter management
   compute_config = {
     enabled = false
@@ -39,10 +47,6 @@ module "eks" {
 resource "aws_security_group" "node_external" {
   description = "Security group for EKS nodes"
   vpc_id      = var.vpc_id
-
-  tags = {
-    "karpenter.sh/discovery" = var.cluster_name
-  }
 }
 
 resource "aws_security_group_rule" "node_to_node" {
@@ -72,10 +76,6 @@ module "karpenter" {
   version = "= 21.10.1"
 
   cluster_name = module.eks.cluster_name
-
-  node_iam_role_additional_policies = {
-    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  }
 }
 
 data "aws_eks_cluster_auth" "eks_cluster_auth" {
@@ -130,6 +130,10 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_arm64" {
       name = "spot-arm64"
     }
     spec = {
+      disruption = {
+        consolidationPolicy = "WhenUnderutilized"
+        consolidateAfter    = "15s"
+      }
       template = {
         spec = {
           nodeClassRef = {
@@ -177,6 +181,8 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_arm64" {
               values   = ["2"]
             }
           ]
+          expireAfter            = "168h"
+          terminationGracePeriod = "5m"
         }
       }
     }
@@ -192,6 +198,10 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_amd64" {
       name = "spot-amd64"
     }
     spec = {
+      disruption = {
+        consolidationPolicy = "WhenUnderutilized"
+        consolidateAfter    = "15s"
+      }
       template = {
         spec = {
           nodeClassRef = {
@@ -239,6 +249,8 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_amd64" {
               values   = ["2"]
             }
           ]
+          expireAfter            = "168h"
+          terminationGracePeriod = "5m"
         }
       }
     }

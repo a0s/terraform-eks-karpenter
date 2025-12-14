@@ -8,11 +8,20 @@ locals {
       configuration_values = null
     }
     "coredns" = {
-      enabled              = var.addon_coredns_enabled
-      version              = var.addon_coredns_version
-      resolve_conflicts    = "OVERWRITE"
-      before_compute       = false
-      configuration_values = null
+      enabled           = var.addon_coredns_enabled
+      version           = var.addon_coredns_version
+      resolve_conflicts = "OVERWRITE"
+      before_compute    = false
+      configuration_values = jsonencode({
+        tolerations = [
+          {
+            key      = "karpenter.sh/controller"
+            operator = "Equal"
+            value    = "true"
+            effect   = "NoSchedule"
+          }
+        ]
+      })
     }
     "vpc-cni" = {
       enabled           = var.addon_vpc_cni_enabled
@@ -33,11 +42,20 @@ locals {
       configuration_values = null
     }
     "metrics-server" = {
-      enabled              = var.metrics_server_enabled
-      version              = var.metrics_server_version
-      resolve_conflicts    = "OVERWRITE"
-      before_compute       = false
-      configuration_values = null
+      enabled           = var.metrics_server_enabled
+      version           = var.metrics_server_version
+      resolve_conflicts = "OVERWRITE"
+      before_compute    = false
+      configuration_values = jsonencode({
+        tolerations = [
+          {
+            key      = "karpenter.sh/controller"
+            operator = "Equal"
+            value    = "true"
+            effect   = "NoSchedule"
+          }
+        ]
+      })
     }
   }
 

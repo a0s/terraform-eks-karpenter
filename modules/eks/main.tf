@@ -39,6 +39,13 @@ module "eks" {
       labels = {
         "karpenter.sh/controller" = "true"
       }
+      taints = {
+        karpenter_controller = {
+          key    = "karpenter.sh/controller"
+          value  = "true"
+          effect = "NO_SCHEDULE"
+        }
+      }
       vpc_security_group_ids = [aws_security_group.node_external.id]
     }
   }
@@ -91,6 +98,8 @@ provider "helm" {
   }
 }
 
+data "aws_ecrpublic_authorization_token" "token" {}
+
 resource "helm_release" "karpenter" {
   provider   = helm.eks-module
   namespace  = "kube-system"
@@ -100,10 +109,16 @@ resource "helm_release" "karpenter" {
   version    = "1.8.3"
   wait       = true
 
+  repository_username = data.aws_ecrpublic_authorization_token.token.user_name
+  repository_password = data.aws_ecrpublic_authorization_token.token.password
+
   values = [
     <<-EOT
-    nodeSelector:
-      karpenter.sh/controller: 'true'
+    tolerations:
+      - key: "karpenter.sh/controller"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
     dnsPolicy: Default
     settings:
       clusterName: ${module.eks.cluster_name}
@@ -131,8 +146,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_arm64" {
     }
     spec = {
       disruption = {
-        consolidationPolicy = "WhenUnderutilized"
-        consolidateAfter    = "15s"
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
       }
       template = {
         spec = {
@@ -199,8 +213,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_amd64" {
     }
     spec = {
       disruption = {
-        consolidationPolicy = "WhenUnderutilized"
-        consolidateAfter    = "15s"
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
       }
       template = {
         spec = {
@@ -290,5 +303,116 @@ resource "kubernetes_manifest" "karpenter_ec2nodeclass_default" {
         "karpenter.sh/discovery" = var.cluster_name
       }
     }
+  }
+}
+
+# Patch kube-proxy DaemonSet to add toleration for Karpenter nodes
+resource "null_resource" "kube_proxy_toleration" {
+  count = var.addon_kube_proxy_enabled ? 1 : 0
+
+  depends_on = [module.eks]
+
+  triggers = {
+    cluster_endpoint = module.eks.cluster_endpoint
+    cluster_name     = module.eks.cluster_name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      TMP_KUBECONFIG=$(mktemp)
+      trap "rm -f $TMP_KUBECONFIG" EXIT
+
+      aws eks update-kubeconfig \
+        --name ${module.eks.cluster_name} \
+        --region ${var.aws_region} \
+        --kubeconfig "$TMP_KUBECONFIG" \
+        > /dev/null 2>&1
+
+      export KUBECONFIG="$TMP_KUBECONFIG"
+
+      if kubectl get daemonset kube-proxy -n kube-system -o jsonpath='{.spec.template.spec.tolerations[*].key}' 2>/dev/null | grep -q "karpenter.sh/controller"; then
+        echo "Toleration already exists, skipping patch"
+        exit 0
+      fi
+
+      kubectl patch daemonset kube-proxy \
+        -n kube-system \
+        --type='strategic' \
+        -p='{"spec":{"template":{"spec":{"tolerations":[{"key":"karpenter.sh/controller","operator":"Equal","value":"true","effect":"NoSchedule"}]}}}}'
+    EOT
+  }
+}
+
+# Patch aws-node DaemonSet to add toleration for Karpenter nodes
+resource "null_resource" "aws_node_toleration" {
+  count = var.addon_vpc_cni_enabled ? 1 : 0
+
+  depends_on = [module.eks]
+
+  triggers = {
+    cluster_endpoint = module.eks.cluster_endpoint
+    cluster_name     = module.eks.cluster_name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      TMP_KUBECONFIG=$(mktemp)
+      trap "rm -f $TMP_KUBECONFIG" EXIT
+
+      aws eks update-kubeconfig \
+        --name ${module.eks.cluster_name} \
+        --region ${var.aws_region} \
+        --kubeconfig "$TMP_KUBECONFIG" \
+        > /dev/null 2>&1
+
+      export KUBECONFIG="$TMP_KUBECONFIG"
+
+      if kubectl get daemonset aws-node -n kube-system -o jsonpath='{.spec.template.spec.tolerations[*].key}' 2>/dev/null | grep -q "karpenter.sh/controller"; then
+        echo "Toleration already exists, skipping patch"
+        exit 0
+      fi
+
+      kubectl patch daemonset aws-node \
+        -n kube-system \
+        --type='strategic' \
+        -p='{"spec":{"template":{"spec":{"tolerations":[{"key":"karpenter.sh/controller","operator":"Equal","value":"true","effect":"NoSchedule"}]}}}}'
+    EOT
+  }
+}
+
+# Patch eks-pod-identity-agent DaemonSet to add toleration for Karpenter nodes
+resource "null_resource" "eks_pod_identity_agent_toleration" {
+  count = var.addon_pod_identity_agent_enabled ? 1 : 0
+
+  depends_on = [module.eks]
+
+  triggers = {
+    cluster_endpoint = module.eks.cluster_endpoint
+    cluster_name     = module.eks.cluster_name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      TMP_KUBECONFIG=$(mktemp)
+      trap "rm -f $TMP_KUBECONFIG" EXIT
+
+      aws eks update-kubeconfig \
+        --name ${module.eks.cluster_name} \
+        --region ${var.aws_region} \
+        --kubeconfig "$TMP_KUBECONFIG" \
+        > /dev/null 2>&1
+
+      export KUBECONFIG="$TMP_KUBECONFIG"
+
+      if kubectl get daemonset eks-pod-identity-agent -n kube-system -o jsonpath='{.spec.template.spec.tolerations[*].key}' 2>/dev/null | grep -q "karpenter.sh/controller"; then
+        echo "Toleration already exists, skipping patch"
+        exit 0
+      fi
+
+      kubectl patch daemonset eks-pod-identity-agent \
+        -n kube-system \
+        --type='strategic' \
+        -p='{"spec":{"template":{"spec":{"tolerations":[{"key":"karpenter.sh/controller","operator":"Equal","value":"true","effect":"NoSchedule"}]}}}}'
+    EOT
   }
 }

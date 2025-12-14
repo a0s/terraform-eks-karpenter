@@ -3,18 +3,15 @@ set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-cd "${SCRIPT_DIR}/envs/dev"
-
 cd "${SCRIPT_DIR}/envs/dev/03_eks"
-tofu destroy -auto-approve \
-  -target="module.eks.kubernetes_manifest.karpenter_nodepool_spot_arm64" \
-  -target="module.eks.kubernetes_manifest.karpenter_nodepool_spot_amd64" \
-  -target="module.eks.kubernetes_manifest.karpenter_ec2nodeclass_default"
+tofu destroy -auto-approve -target="module.eks.kubernetes_manifest.karpenter_nodepool_spot_arm64"
+tofu destroy -auto-approve -target="module.eks.kubernetes_manifest.karpenter_nodepool_spot_amd64"
+tofu destroy -auto-approve -target="module.eks.kubernetes_manifest.karpenter_ec2nodeclass_default"
 tofu destroy -auto-approve -target="module.eks.helm_release.karpenter"
-tofu destroy -auto-approve || true
+tofu destroy -auto-approve
 
 cd "${SCRIPT_DIR}/envs/dev/02_vpc"
-tofu destroy -auto-approve || true
+tofu destroy -auto-approve
 
 cd "${SCRIPT_DIR}/envs/dev/01_bootstrap"
-tofu destroy -auto-approve || true
+tofu destroy -auto-approve

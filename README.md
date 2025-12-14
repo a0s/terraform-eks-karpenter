@@ -33,11 +33,21 @@ flowchart LR
         private_bucket_mod["private_bucket"]
         vpc_mod["vpc"]
         eks_mod["eks"]
+
+        vpc_aws_mod["terraform-aws-modules/vpc/aws"]
+        fck_nat_mod["terraform-aws-fck-nat"]
+        eks_aws_mod["terraform-aws-modules/eks/aws"]
+        karpenter_mod["terraform-aws-modules/eks/aws//modules/karpenter"]
     end
 
     private_bucket_mod -.-> bootstrap
     vpc_mod -.-> vpc_stack
     eks_mod -.-> eks_stack
+
+    vpc_aws_mod -.-> vpc_mod
+    fck_nat_mod -.-> vpc_mod
+    eks_aws_mod -.-> eks_mod
+    karpenter_mod -.-> eks_mod
 
     style dev fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     style modules fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -47,6 +57,10 @@ flowchart LR
     style private_bucket_mod fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
     style vpc_mod fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
     style eks_mod fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    style vpc_aws_mod fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style fck_nat_mod fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style eks_aws_mod fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style karpenter_mod fill:#fff9c4,stroke:#f57f17,stroke-width:2px
 ```
 
 ## Usage

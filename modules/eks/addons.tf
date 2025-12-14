@@ -4,14 +4,14 @@ locals {
       enabled              = var.addon_kube_proxy_enabled
       version              = var.addon_kube_proxy_version
       resolve_conflicts    = "OVERWRITE"
-      before_compute       = true
+      before_compute       = false
       configuration_values = null
     }
     "coredns" = { # has tolerations
       enabled           = var.addon_coredns_enabled
       version           = var.addon_coredns_version
       resolve_conflicts = "OVERWRITE"
-      before_compute    = true
+      before_compute    = false
       configuration_values = jsonencode({
         tolerations = [
           {

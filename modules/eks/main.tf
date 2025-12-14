@@ -89,6 +89,8 @@ data "aws_eks_cluster_auth" "eks_cluster_auth" {
   name = module.eks.cluster_name
 }
 
+data "aws_ecrpublic_authorization_token" "token" {}
+
 provider "helm" {
   alias = "eks-module"
   kubernetes = {
@@ -96,9 +98,12 @@ provider "helm" {
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     token                  = data.aws_eks_cluster_auth.eks_cluster_auth.token
   }
+  registries = [{
+    url      = "oci://public.ecr.aws"
+    username = data.aws_ecrpublic_authorization_token.token.user_name
+    password = data.aws_ecrpublic_authorization_token.token.password
+  }]
 }
-
-data "aws_ecrpublic_authorization_token" "token" {}
 
 resource "helm_release" "karpenter" {
   provider   = helm.eks-module
@@ -108,9 +113,6 @@ resource "helm_release" "karpenter" {
   repository = "oci://public.ecr.aws/karpenter"
   version    = "1.8.3"
   wait       = true
-
-  repository_username = data.aws_ecrpublic_authorization_token.token.user_name
-  repository_password = data.aws_ecrpublic_authorization_token.token.password
 
   values = [
     <<-EOT
@@ -147,6 +149,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_arm64" {
     spec = {
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "0s"
       }
       template = {
         spec = {
@@ -214,6 +217,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_amd64" {
     spec = {
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "0s"
       }
       template = {
         spec = {

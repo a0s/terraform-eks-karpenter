@@ -1,21 +1,27 @@
 # Automate AWS EKS cluster setup with Karpenter, while utilizing Graviton and Spot instances
 
-You've joined a new and growing startup.
+Example Terraform project for deploying an AWS EKS cluster with Karpenter autoscaling, supporting both x86 and ARM64 (Graviton) instances.
 
-The company wants to build its initial Kubernetes infrastructure on AWS. The team wants to leverage the latest autoscaling capabilities by Karpenter, as well as utilize Graviton and Spot instances for better price/performance.
+## Features
 
-They have asked you if you can help create the following:
-
-1. Terraform code that deploys an EKS cluster (whatever latest version is currently available) into a new dedicated VPC
-
-2. The terraform code should also deploy Karpenter with node pool(s) that can deploy both x86 and arm64 instances
-
-3. Include a short readme that explains how to use the Terraform repo and that also demonstrates how an end-user (a developer from the company) can run a pod/deployment on x86 or Graviton instance inside the cluster.
-
-**Deliverable**: A git repository containing all the necessary infrastructure as code needed in order to recreate a working POC of the above architecture. Your repository may be either public or private. If private please ensure to share it with the relevant reviewer.
+- **EKS Cluster**: Deploys a production-ready EKS cluster in a dedicated VPC
+- **Karpenter Integration**: Automated node provisioning with support for both x86 and ARM64 architectures
+- **Cost Optimization**: Leverages Graviton and Spot instances for better price/performance
+- **Multi-Architecture Support**: Run workloads on either x86 or ARM64 nodes based on pod requirements
+- **Multiple Environments**: Supports creation of multiple environments (dev, prod, etc.)
 
 ## Highlights
 
-- The _bootstrap stack is used only for managing the S3 bucket where Terraform stack states are stored. We create a private bucket for storing Terraform states with `force_destroy = true`. In a real project, this option should be disabled for additional bucket protection.
+- The `_bootstrap` stack is used only for managing the S3 bucket where Terraform stack states are stored. We create a private bucket for storing Terraform states with `force_destroy = true`. In a real project, this option should be disabled for additional bucket protection.
 
-- We use symbolic link %stack_name%/_bootstrap.auto.tfvars -> 01_bootstrap/_main.auto.tfvars to use the same `env`, `random_suffix` and `aws_region` in every stack.
+- We use symbolic links `%stack_name%/_bootstrap.auto.tfvars -> 01_bootstrap/_main.auto.tfvars` to use the same `env`, `random_suffix` and `aws_region` in every stack.
+
+- Karpenter controller nodes are protected with a taint (`karpenter.sh/controller=true:NoSchedule`) to prevent other workloads from being scheduled on them. All system components (Karpenter, CoreDNS, EKS Pod Identity Agent, Metrics Server) have proper tolerations configured to run on these dedicated nodes.
+
+- To create a second environment (e.g., `prod`), create a folder `envs/prod` and copy the contents from `envs/dev`. This content is a thin wrapper layer split into separate states (bootstrap, VPC, EKS) to reduce blast radius, and it uses modules from the `modules/` directory. After copying, update `_main.auto.tfvars` in `01_bootstrap` to set the correct `env`, `random_suffix`, and `aws_region` values for the new environment.
+
+## Known Issues
+
+- **Unexpected attribute error**: "An attribute named 'cluster_name' is not expected here"
+
+  If you are using VSCode/CursorIDE together with OpenTofu (official) 0.6.0, it cannot (presumably) correctly parse the Karpenter submodule when it is called from your module.

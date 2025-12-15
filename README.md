@@ -22,6 +22,8 @@ This example focuses on demonstrating core EKS and Karpenter functionality. The 
 
 - **CI/CD Pipeline**: For simplicity, this example deploys workloads using a pre-generated kubectl config file. In production, deployments are typically handled through CI/CD pipelines (e.g., GitHub Actions) or GitOps tools like ArgoCD.
 
+- **IPv6 Support**: This example does not cover IPv6 configuration. The cluster and workloads use IPv4 addressing only.
+
 ## Architecture
 
 The following diagram illustrates the structure of the Terraform codebase:

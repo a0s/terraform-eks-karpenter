@@ -1,9 +1,5 @@
 # Automate AWS EKS cluster setup with Karpenter, while utilizing Graviton and Spot instances
 
-<div align="center">
-  <img src="images/logo.png" width="500" />
-</div>
-
 Example Terraform project for deploying an AWS EKS cluster with Karpenter autoscaling, supporting both x86 and ARM64 (Graviton) instances.
 
 ## Features
@@ -13,6 +9,18 @@ Example Terraform project for deploying an AWS EKS cluster with Karpenter autosc
 - **Cost Optimization**: Leverages Graviton and Spot instances for better price/performance
 - **Multi-Architecture Support**: Run workloads on either x86 or ARM64 nodes based on pod requirements
 - **Multiple Environments**: Supports creation of multiple environments (dev, prod, etc.)
+
+## Out of Scope
+
+This example focuses on demonstrating core EKS and Karpenter functionality. The following production-ready practices are intentionally not included:
+
+- **Cross-Account Role Assumption**: This example runs directly as a user with appropriate permissions. In production environments, infrastructure deployment typically uses role assumption to a separate AWS account, following the principle of resource separation between user accounts and resource accounts.
+
+- **Private Endpoint Access**: The cluster is configured with `endpoint_public_access = true` for simplicity. In production, it's recommended to disable public endpoint access and connect to the cluster through a VPN for enhanced security.
+
+- **Alternative Access Methods**: Users are added via `access_entries` in this example. However, in some scenarios, access through Service Accounts with RBAC and pre-generated kubectl configs may be sufficient and more appropriate for your use case.
+
+- **CI/CD Pipeline**: For simplicity, this example deploys workloads using a pre-generated kubectl config file. In production, deployments are typically handled through CI/CD pipelines (e.g., GitHub Actions) or GitOps tools like ArgoCD.
 
 ## Architecture
 
@@ -93,6 +101,20 @@ k9s
 ```
 
 ### Deploying Test Workloads
+
+Since this setup uses separate node pools for amd64 and arm64 architectures, you must explicitly specify the target architecture in your workload manifests using `nodeAffinity`:
+
+```yaml
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+                - amd64
+```
 
 Deploy a test workload on x86 (amd64) nodes:
 
@@ -177,6 +199,8 @@ AWS_SECRET_ACCESS_KEY="your-secret-access-key" \
 - For the dev deployment, we use **fck-nat** by default (a cost-effective NAT solution). To use regular AWS NAT Gateway instead, set `nat_type = "regular"` in `envs/dev/02_vpc/main.tf`.
 
 - Karpenter controller nodes are protected with a taint (`karpenter.sh/controller=true:NoSchedule`) to prevent other workloads from being scheduled on them. All system components (Karpenter, CoreDNS, EKS Pod Identity Agent, Metrics Server) have proper tolerations configured to run on these dedicated nodes.
+
+- The arm64 node pool has a higher priority than the amd64 node pool. If a workload doesn't have `nodeAffinity` with `kubernetes.io/arch` specified, the pod will be scheduled on arm64 nodes. If the container image doesn't have an arm64 version available, the pod will fail to start.
 
 - To create a second environment (e.g., `prod`), create a folder `envs/prod` and copy the contents from `envs/dev`. This content is a thin wrapper layer split into separate states (bootstrap, VPC, EKS) to reduce blast radius, and it uses modules from the `modules/` directory. After copying, update `_main.auto.tfvars` in `01_bootstrap` to set the correct `env`, `random_suffix`, and `aws_region` values for the new environment.
 

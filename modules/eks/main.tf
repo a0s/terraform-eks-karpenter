@@ -154,6 +154,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_arm64" {
       name = "spot-arm64"
     }
     spec = {
+      weight = 10
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
         consolidateAfter    = "0s"
@@ -222,6 +223,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_spot_amd64" {
       name = "spot-amd64"
     }
     spec = {
+      weight = 5
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
         consolidateAfter    = "0s"
